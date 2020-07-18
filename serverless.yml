@@ -1,0 +1,110 @@
+service: hello-world-handson-service
+
+custom:
+  stage: ${opt:stage, 'development'}
+  region: ${opt:region, 'us-east-1'}
+  #customDomain:
+    #domainName: ${self:custom.subdominio.${self:custom.stage}}.lambdahandson.com.br
+    #basePath: handson-service
+    #stage: ${self:custom.stage}
+    #createRoute53Record: false
+  #subdominio:
+    #development: dev-api
+    #homologation: hom-api
+    #production: api
+package:
+  individually: true
+  exclude:
+    - ./**
+
+#plugins:
+  #- serverless-domain-manager
+
+provider:
+  name: aws
+  region: ${self:custom.region}
+  timeout: 15
+  memorySize: 128
+  logRetentionInDays: 5
+  stage: ${self:custom.stage}
+  endpointType: Edge ##### Edge, Regional e Private #####
+  role: HelloWorldHandsOnRole
+  versionFunctions: false
+  deploymentBucket:
+    name: cicd-${self:custom.region}-${self:custom.stage}
+  environment:
+    STAGE: ${self:custom.stage}
+  stackTags:
+    Environment: ${self:custom.stage}
+    Application: HelloWorldService
+    CloudFormation: 'true'
+
+layers:
+  helloWorldHandsOnBusinessLayer:
+    path: dist/layer
+    name: hello-world-handson-business-layer-${self:custom.stage}
+    compatibleRuntimes:
+      - nodejs12.x
+    package:
+      include:
+        - ./**
+
+functions:
+  helloWorld:
+    handler: dist/hello-world/index.handler
+    events:
+      - http:
+          path: hello-world
+          method: get
+          cors: true
+    package:
+      include:
+        - dist/hello-world/**
+    layers:
+      - { Ref: HelloWorldHandsOnBusinessLayerLambdaLayer }
+
+  gitHubProfiles:
+    handler: dist/github-profile/index.handler
+    events:
+      - http:
+          path: github/profiles
+          method: post
+          cors: true
+    package:
+      include:
+        - dist/github-profile/**
+    layers:
+      - { Ref: HelloWorldHandsOnBusinessLayerLambdaLayer }
+
+resources:
+  Resources:
+    HelloWorldHandsOnRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: HelloWorldHandsOnRole
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: HelloWorldHandsOnPolicy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                  Resource:
+                    - 'Fn::Join':
+                      - ':'
+                      -
+                        - 'arn:aws:logs'
+                        - Ref: 'AWS::Region'
+                        - Ref: 'AWS::AccountId'
+                        - 'log-group:/aws/lambda/*:*:*'

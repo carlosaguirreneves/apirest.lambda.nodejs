@@ -3,22 +3,10 @@ service: hello-world-handson-service
 custom:
   stage: ${opt:stage, 'development'}
   region: ${opt:region, 'us-east-1'}
-  #customDomain:
-    #domainName: ${self:custom.subdominio.${self:custom.stage}}.lambdahandson.com.br
-    #basePath: handson-service
-    #stage: ${self:custom.stage}
-    #createRoute53Record: false
-  #subdominio:
-    #development: dev-api
-    #homologation: hom-api
-    #production: api
 package:
   individually: true
   exclude:
     - ./**
-
-#plugins:
-  #- serverless-domain-manager
 
 provider:
   name: aws
